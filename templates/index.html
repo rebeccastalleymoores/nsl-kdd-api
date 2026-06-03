@@ -322,7 +322,8 @@ const PRESETS = {
     dst_host_diff_srv_rate: 0.0, dst_host_serror_rate: 0.0, dst_host_rerror_rate: 0.0,
     dst_host_same_src_port_rate: 0.11, dst_host_srv_diff_host_rate: 0.0
   },
-  dos: {
+  dos: [
+  {
     protocol_type: "tcp", service: "http", flag: "S0",
     duration: 0, src_bytes: 0, dst_bytes: 0, wrong_fragment: 0,
     logged_in: "0", num_failed_logins: 0, is_guest_login: "0", root_shell: "0",
@@ -333,6 +334,29 @@ const PRESETS = {
     dst_host_diff_srv_rate: 0.0, dst_host_serror_rate: 1.0, dst_host_rerror_rate: 0.0,
     dst_host_same_src_port_rate: 1.0, dst_host_srv_diff_host_rate: 0.0
   },
+  {
+    protocol_type: "tcp", service: "private", flag: "S0",
+    duration: 0, src_bytes: 0, dst_bytes: 0, wrong_fragment: 0,
+    logged_in: "0", num_failed_logins: 0, is_guest_login: "0", root_shell: "0",
+    hot: 0, num_compromised: 0, num_root: 0, num_file_creations: 0,
+    count: 511, srv_count: 511, same_srv_rate: 1.0, diff_srv_rate: 0.0,
+    serror_rate: 1.0, rerror_rate: 0.0,
+    dst_host_count: 255, dst_host_srv_count: 255, dst_host_same_srv_rate: 1.0,
+    dst_host_diff_srv_rate: 0.0, dst_host_serror_rate: 1.0, dst_host_rerror_rate: 0.0,
+    dst_host_same_src_port_rate: 1.0, dst_host_srv_diff_host_rate: 0.0
+  },
+  {
+    protocol_type: "udp", service: "ecr_i", flag: "S0",
+    duration: 0, src_bytes: 0, dst_bytes: 0, wrong_fragment: 0,
+    logged_in: "0", num_failed_logins: 0, is_guest_login: "0", root_shell: "0",
+    hot: 0, num_compromised: 0, num_root: 0, num_file_creations: 0,
+    count: 511, srv_count: 511, same_srv_rate: 1.0, diff_srv_rate: 0.0,
+    serror_rate: 1.0, rerror_rate: 0.0,
+    dst_host_count: 255, dst_host_srv_count: 255, dst_host_same_srv_rate: 1.0,
+    dst_host_diff_srv_rate: 0.0, dst_host_serror_rate: 1.0, dst_host_rerror_rate: 0.0,
+    dst_host_same_src_port_rate: 1.0, dst_host_srv_diff_host_rate: 0.0
+  }
+],
   probe: {
     protocol_type: "tcp", service: "private", flag: "REJ",
     duration: 0, src_bytes: 0, dst_bytes: 0, wrong_fragment: 0,
@@ -369,7 +393,8 @@ const PRESETS = {
 };
 
 function loadPreset(name) {
-  const p = JSON.parse(JSON.stringify(PRESETS[name]));
+  const raw = PRESETS[name];
+  const p = JSON.parse(JSON.stringify(Array.isArray(raw) ? raw[Math.floor(Math.random() * raw.length)] : raw));
   document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
 
