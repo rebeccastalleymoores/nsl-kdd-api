@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSL-KDD Intrusion Detection</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f8f9fa; color: #1a1a1a; min-height: 100vh; }
+
+  header { background: #1a1a2e; color: white; padding: 1.5rem 2rem; }
+  header h1 { font-size: 1.3rem; font-weight: 600; }
+  header p { font-size: 0.85rem; color: #aab; margin-top: 0.3rem; }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem; }
+
+  .preset-bar { background: white; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; }
+  .preset-bar label { font-size: 0.85rem; font-weight: 600; color: #555; display: block; margin-bottom: 0.6rem; }
+  .preset-buttons { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .preset-btn { padding: 0.45rem 1rem; border: 1px solid #c0c0d0; border-radius: 6px; background: #f4f4f8; font-size: 0.82rem; cursor: pointer; color: #333; transition: all 0.15s; }
+  .preset-btn:hover { background: #e8e8f4; border-color: #9090c0; }
+  .preset-btn.active { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; align-items: start; }
+
+  .form-card { background: white; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.5rem; }
+  .form-card h2 { font-size: 0.95rem; font-weight: 600; color: #333; margin-bottom: 1.2rem; padding-bottom: 0.8rem; border-bottom: 1px solid #eee; }
+
+  .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin: 1.2rem 0 0.8rem; }
+
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+  .field-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+
+  .field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .field label { font-size: 0.78rem; font-weight: 500; color: #555; display: flex; align-items: center; gap: 0.35rem; }
+  .field input, .field select {
+    padding: 0.4rem 0.6rem; border: 1px solid #d0d0d0; border-radius: 6px;
+    font-size: 0.85rem; background: #fafafa; color: #1a1a1a;
+    transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: #5555aa; background: white; }
+
+  .tooltip-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: #dde; color: #667; font-size: 10px; font-weight: 700; cursor: help; flex-shrink: 0; position: relative; }
+  .tooltip-icon:hover::after {
+    content: attr(data-tip);
+    position: absolute; left: 20px; top: -4px; z-index: 100;
+    background: #1a1a2e; color: white; font-size: 0.75rem; font-weight: 400;
+    padding: 0.4rem 0.6rem; border-radius: 6px; white-space: nowrap; max-width: 220px; white-space: normal;
+    width: max-content; max-width: 220px;
+    pointer-events: none;
+  }
+
+  .submit-btn {
+    margin-top: 1.5rem; width: 100%; padding: 0.75rem;
+    background: #1a1a2e; color: white; border: none; border-radius: 8px;
+    font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  .submit-btn:hover { background: #2a2a4e; }
+  .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  .result-panel { position: sticky; top: 1.5rem; }
+
+  .result-card { background: white; border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.5rem; }
+  .result-card h2 { font-size: 0.95rem; font-weight: 600; color: #333; margin-bottom: 1rem; padding-bottom: 0.8rem; border-bottom: 1px solid #eee; }
+
+  .placeholder { text-align: center; padding: 2rem 1rem; color: #aaa; font-size: 0.85rem; }
+  .placeholder-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
+  .class-badge { display: inline-block; padding: 0.35rem 1rem; border-radius: 20px; font-weight: 700; font-size: 1rem; margin-bottom: 1rem; }
+  .badge-Normal { background: #e6f4ea; color: #1e7e34; }
+  .badge-DoS { background: #fdecea; color: #c0392b; }
+  .badge-Probe { background: #fff8e1; color: #b7791f; }
+  .badge-R2L { background: #fce4ec; color: #ad1457; }
+  .badge-U2R { background: #ede7f6; color: #6a1b9a; }
+
+  .confidence-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.2rem; }
+  .confidence-bar-bg { flex: 1; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+  .confidence-bar-fill { height: 100%; border-radius: 4px; background: #1a1a2e; transition: width 0.4s; }
+  .confidence-label { font-size: 0.85rem; font-weight: 600; color: #333; min-width: 40px; text-align: right; }
+
+  .prob-section { margin-bottom: 1.2rem; }
+  .prob-section h3 { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin-bottom: 0.6rem; }
+  .prob-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; font-size: 0.8rem; }
+  .prob-label { width: 52px; color: #555; }
+  .prob-bar-bg { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+  .prob-bar-fill { height: 100%; border-radius: 3px; background: #7777cc; }
+  .prob-val { width: 36px; text-align: right; color: #555; font-size: 0.75rem; }
+
+  .shap-section h3 { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin-bottom: 0.6rem; }
+  .shap-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem; font-size: 0.78rem; }
+  .shap-name { flex: 1; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shap-arrow { font-size: 0.7rem; font-weight: 700; width: 14px; text-align: center; }
+  .shap-arrow.up { color: #1e7e34; }
+  .shap-arrow.down { color: #c0392b; }
+  .shap-val { font-size: 0.75rem; color: #777; min-width: 38px; text-align: right; }
+
+  .error-msg { background: #fdecea; border: 1px solid #f5c6cb; border-radius: 8px; padding: 1rem; color: #c0392b; font-size: 0.85rem; margin-top: 1rem; }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .result-panel { position: static; }
+    .field-grid.three { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NSL-KDD Intrusion Detection</h1>
+  <p>Submit network connection features to classify traffic and explain the prediction</p>
+</header>
+
+<div class="container">
+
+  <div class="preset-bar">
+    <label>Load an example scenario</label>
+    <div class="preset-buttons">
+      <button class="preset-btn" onclick="loadPreset('normal')">Normal HTTP traffic</button>
+      <button class="preset-btn" onclick="loadPreset('dos')">DoS attack (SYN flood)</button>
+      <button class="preset-btn" onclick="loadPreset('probe')">Probe / port scan</button>
+      <button class="preset-btn" onclick="loadPreset('r2l')">R2L (remote login attempt)</button>
+      <button class="preset-btn" onclick="loadPreset('u2r')">U2R (privilege escalation)</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="form-card">
+      <h2>Connection features</h2>
+
+      <div class="section-title">Connection basics</div>
+      <div class="field-grid three">
+        <div class="field">
+          <label>Protocol <span class="tooltip-icon" data-tip="Transport layer protocol used by the connection">?</span></label>
+          <select id="protocol_type">
+            <option value="tcp">TCP</option>
+            <option value="udp">UDP</option>
+            <option value="icmp">ICMP</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Service <span class="tooltip-icon" data-tip="Network service on the destination (e.g. http, ftp, smtp)">?</span></label>
+          <select id="service">
+            <option value="http">http</option>
+            <option value="ftp">ftp</option>
+            <option value="smtp">smtp</option>
+            <option value="ssh">ssh</option>
+            <option value="telnet">telnet</option>
+            <option value="dns">dns</option>
+            <option value="pop3">pop3</option>
+            <option value="imap4">imap4</option>
+            <option value="ftp_data">ftp_data</option>
+            <option value="private">private</option>
+            <option value="ecr_i">ecr_i</option>
+            <option value="other">other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Flag <span class="tooltip-icon" data-tip="Status of the TCP connection. SF = normal established+closed. S0 = no response. REJ = rejected.">?</span></label>
+          <select id="flag">
+            <option value="SF">SF (normal)</option>
+            <option value="S0">S0 (no response)</option>
+            <option value="REJ">REJ (rejected)</option>
+            <option value="RSTO">RSTO (reset by origin)</option>
+            <option value="RSTR">RSTR (reset by dest)</option>
+            <option value="SH">SH (half-open)</option>
+            <option value="OTH">OTH (other)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-title">Traffic volume</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Duration (s) <span class="tooltip-icon" data-tip="Length of the connection in seconds">?</span></label>
+          <input type="number" id="duration" value="0" min="0">
+        </div>
+        <div class="field">
+          <label>Source bytes <span class="tooltip-icon" data-tip="Bytes sent from source to destination">?</span></label>
+          <input type="number" id="src_bytes" value="0" min="0">
+        </div>
+        <div class="field">
+          <label>Dest bytes <span class="tooltip-icon" data-tip="Bytes sent from destination back to source">?</span></label>
+          <input type="number" id="dst_bytes" value="0" min="0">
+        </div>
+        <div class="field">
+          <label>Wrong fragments <span class="tooltip-icon" data-tip="Number of wrong fragments in the connection — usually 0 in normal traffic">?</span></label>
+          <input type="number" id="wrong_fragment" value="0" min="0">
+        </div>
+      </div>
+
+      <div class="section-title">Login activity</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Logged in <span class="tooltip-icon" data-tip="1 if successfully logged in, 0 otherwise">?</span></label>
+          <select id="logged_in"><option value="0">No (0)</option><option value="1">Yes (1)</option></select>
+        </div>
+        <div class="field">
+          <label>Failed logins <span class="tooltip-icon" data-tip="Number of failed login attempts">?</span></label>
+          <input type="number" id="num_failed_logins" value="0" min="0">
+        </div>
+        <div class="field">
+          <label>Guest login <span class="tooltip-icon" data-tip="1 if logged in as guest, 0 otherwise">?</span></label>
+          <select id="is_guest_login"><option value="0">No (0)</option><option value="1">Yes (1)</option></select>
+        </div>
+        <div class="field">
+          <label>Root shell <span class="tooltip-icon" data-tip="1 if a root shell was obtained — a strong attack indicator">?</span></label>
+          <select id="root_shell"><option value="0">No (0)</option><option value="1">Yes (1)</option></select>
+        </div>
+      </div>
+
+      <div class="section-title">Suspicious activity</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Hot indicators <span class="tooltip-icon" data-tip="Number of 'hot' indicators — access to system directories, creation of programs, etc.">?</span></label>
+          <input type="number" id="hot" value="0" min="0">
+        </div>
+        <div class="field">
+          <label>Compromised <span class="tooltip-icon" data-tip="Number of compromised conditions — e.g. jumps to root, write access to sensitive files">?</span></label>
+          <input type="number" id="num_compromised" value="0" min="0">
+        </div>
+        <div class="field">
+          <label>Num root <span class="tooltip-icon" data-tip="Number of root accesses">?</span></label>
+          <input type="number" id="num_root" value="0" min="0">
+        </div>
+        <div class="field">
+          <label>File creations <span class="tooltip-icon" data-tip="Number of file creation operations — elevated in some attacks">?</span></label>
+          <input type="number" id="num_file_creations" value="0" min="0">
+        </div>
+      </div>
+
+      <div class="section-title">Traffic rates (same-time window)</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Count <span class="tooltip-icon" data-tip="Connections to the same host in the last 2 seconds">?</span></label>
+          <input type="number" id="count" value="1" min="0">
+        </div>
+        <div class="field">
+          <label>Srv count <span class="tooltip-icon" data-tip="Connections to the same service in the last 2 seconds">?</span></label>
+          <input type="number" id="srv_count" value="1" min="0">
+        </div>
+        <div class="field">
+          <label>Same srv rate <span class="tooltip-icon" data-tip="Proportion of connections to the same service (0–1)">?</span></label>
+          <input type="number" id="same_srv_rate" value="1.0" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>Diff srv rate <span class="tooltip-icon" data-tip="Proportion of connections to different services (0–1) — high values suggest scanning">?</span></label>
+          <input type="number" id="diff_srv_rate" value="0.0" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>SYN error rate <span class="tooltip-icon" data-tip="Proportion of connections with SYN errors — high in SYN flood DoS attacks">?</span></label>
+          <input type="number" id="serror_rate" value="0.0" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>REJ error rate <span class="tooltip-icon" data-tip="Proportion of connections that were rejected">?</span></label>
+          <input type="number" id="rerror_rate" value="0.0" min="0" max="1" step="0.01">
+        </div>
+      </div>
+
+      <div class="section-title">Destination host statistics</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Host count <span class="tooltip-icon" data-tip="Connections to the same destination host over last 100 connections">?</span></label>
+          <input type="number" id="dst_host_count" value="1" min="0" max="255">
+        </div>
+        <div class="field">
+          <label>Host srv count <span class="tooltip-icon" data-tip="Connections to the same service on this host over last 100 connections">?</span></label>
+          <input type="number" id="dst_host_srv_count" value="1" min="0" max="255">
+        </div>
+        <div class="field">
+          <label>Host same srv rate <span class="tooltip-icon" data-tip="Proportion of connections to the same service on this host (0–1)">?</span></label>
+          <input type="number" id="dst_host_same_srv_rate" value="1.0" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>Host diff srv rate <span class="tooltip-icon" data-tip="Proportion of connections to different services on this host (0–1)">?</span></label>
+          <input type="number" id="dst_host_diff_srv_rate" value="0.0" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>Host SYN error rate <span class="tooltip-icon" data-tip="Proportion of connections to this host with SYN errors">?</span></label>
+          <input type="number" id="dst_host_serror_rate" value="0.0" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>Host REJ rate <span class="tooltip-icon" data-tip="Proportion of connections to this host that were rejected">?</span></label>
+          <input type="number" id="dst_host_rerror_rate" value="0.0" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>Same src port rate <span class="tooltip-icon" data-tip="Proportion using the same source port — high in some DoS patterns">?</span></label>
+          <input type="number" id="dst_host_same_src_port_rate" value="0.0" min="0" max="1" step="0.01">
+        </div>
+        <div class="field">
+          <label>Srv diff host rate <span class="tooltip-icon" data-tip="Proportion of connections to different hosts for this service">?</span></label>
+          <input type="number" id="dst_host_srv_diff_host_rate" value="0.0" min="0" max="1" step="0.01">
+        </div>
+      </div>
+
+      <button class="submit-btn" id="submitBtn" onclick="submitPrediction()">Classify connection</button>
+    </div>
+
+    <div class="result-panel">
+      <div class="result-card">
+        <h2>Prediction</h2>
+        <div id="result-content">
+          <div class="placeholder">
+            <div class="placeholder-icon">🔍</div>
+            <div>Fill in the form and click<br><strong>Classify connection</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRESETS = {
+  normal: {
+    protocol_type: "tcp", service: "http", flag: "SF",
+    duration: 0, src_bytes: 181, dst_bytes: 5450, wrong_fragment: 0,
+    logged_in: "1", num_failed_logins: 0, is_guest_login: "0", root_shell: "0",
+    hot: 0, num_compromised: 0, num_root: 0, num_file_creations: 0,
+    count: 8, srv_count: 8, same_srv_rate: 1.0, diff_srv_rate: 0.0,
+    serror_rate: 0.0, rerror_rate: 0.0,
+    dst_host_count: 9, dst_host_srv_count: 9, dst_host_same_srv_rate: 1.0,
+    dst_host_diff_srv_rate: 0.0, dst_host_serror_rate: 0.0, dst_host_rerror_rate: 0.0,
+    dst_host_same_src_port_rate: 0.11, dst_host_srv_diff_host_rate: 0.0
+  },
+  dos: {
+    protocol_type: "tcp", service: "http", flag: "S0",
+    duration: 0, src_bytes: 0, dst_bytes: 0, wrong_fragment: 0,
+    logged_in: "0", num_failed_logins: 0, is_guest_login: "0", root_shell: "0",
+    hot: 0, num_compromised: 0, num_root: 0, num_file_creations: 0,
+    count: 511, srv_count: 511, same_srv_rate: 1.0, diff_srv_rate: 0.0,
+    serror_rate: 1.0, rerror_rate: 0.0,
+    dst_host_count: 255, dst_host_srv_count: 255, dst_host_same_srv_rate: 1.0,
+    dst_host_diff_srv_rate: 0.0, dst_host_serror_rate: 1.0, dst_host_rerror_rate: 0.0,
+    dst_host_same_src_port_rate: 1.0, dst_host_srv_diff_host_rate: 0.0
+  },
+  probe: {
+    protocol_type: "tcp", service: "private", flag: "REJ",
+    duration: 0, src_bytes: 0, dst_bytes: 0, wrong_fragment: 0,
+    logged_in: "0", num_failed_logins: 0, is_guest_login: "0", root_shell: "0",
+    hot: 0, num_compromised: 0, num_root: 0, num_file_creations: 0,
+    count: 1, srv_count: 1, same_srv_rate: 0.06, diff_srv_rate: 0.06,
+    serror_rate: 0.0, rerror_rate: 1.0,
+    dst_host_count: 255, dst_host_srv_count: 4, dst_host_same_srv_rate: 0.02,
+    dst_host_diff_srv_rate: 0.06, dst_host_serror_rate: 0.0, dst_host_rerror_rate: 0.99,
+    dst_host_same_src_port_rate: 0.0, dst_host_srv_diff_host_rate: 0.0
+  },
+  r2l: {
+    protocol_type: "tcp", service: "ftp", flag: "SF",
+    duration: 1, src_bytes: 105, dst_bytes: 146, wrong_fragment: 0,
+    logged_in: "0", num_failed_logins: 5, is_guest_login: "0", root_shell: "0",
+    hot: 0, num_compromised: 0, num_root: 0, num_file_creations: 0,
+    count: 1, srv_count: 1, same_srv_rate: 1.0, diff_srv_rate: 0.0,
+    serror_rate: 0.0, rerror_rate: 0.0,
+    dst_host_count: 1, dst_host_srv_count: 1, dst_host_same_srv_rate: 1.0,
+    dst_host_diff_srv_rate: 0.0, dst_host_serror_rate: 0.0, dst_host_rerror_rate: 0.0,
+    dst_host_same_src_port_rate: 1.0, dst_host_srv_diff_host_rate: 0.0
+  },
+  u2r: {
+    protocol_type: "tcp", service: "telnet", flag: "SF",
+    duration: 20, src_bytes: 1500, dst_bytes: 3000, wrong_fragment: 0,
+    logged_in: "1", num_failed_logins: 0, is_guest_login: "0", root_shell: "1",
+    hot: 4, num_compromised: 3, num_root: 2, num_file_creations: 2,
+    count: 1, srv_count: 1, same_srv_rate: 1.0, diff_srv_rate: 0.0,
+    serror_rate: 0.0, rerror_rate: 0.0,
+    dst_host_count: 1, dst_host_srv_count: 1, dst_host_same_srv_rate: 1.0,
+    dst_host_diff_srv_rate: 0.0, dst_host_serror_rate: 0.0, dst_host_rerror_rate: 0.0,
+    dst_host_same_src_port_rate: 1.0, dst_host_srv_diff_host_rate: 0.0
+  }
+};
+
+function loadPreset(name) {
+  const p = JSON.parse(JSON.stringify(PRESETS[name]));
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  const skip = new Set(['protocol_type','service','flag','logged_in','is_guest_login','root_shell']);
+  const ratioFields = new Set(['same_srv_rate','diff_srv_rate','serror_rate','rerror_rate',
+    'dst_host_same_srv_rate','dst_host_diff_srv_rate','dst_host_serror_rate',
+    'dst_host_rerror_rate','dst_host_same_src_port_rate','dst_host_srv_diff_host_rate']);
+
+  for (const [k, v] of Object.entries(p)) {
+    if (skip.has(k)) continue;
+    if (typeof v === 'number' && v > 0) {
+      const jitter = 1 + (Math.random() * 0.3 - 0.15);
+      let noisy = v * jitter;
+      if (ratioFields.has(k)) noisy = Math.min(1, Math.max(0, parseFloat(noisy.toFixed(2))));
+      else noisy = Math.max(0, Math.round(noisy));
+      p[k] = noisy;
+    }
+  }
+
+  for (const [k, v] of Object.entries(p)) {
+    const el = document.getElementById(k);
+    if (el) el.value = v;
+  }
+}
+
+function getFormValues() {
+  const fields = [
+    'protocol_type','service','flag','duration','src_bytes','dst_bytes',
+    'wrong_fragment','logged_in','num_failed_logins','is_guest_login',
+    'root_shell','hot','num_compromised','num_root','num_file_creations',
+    'count','srv_count','same_srv_rate','diff_srv_rate','serror_rate',
+    'rerror_rate','dst_host_count','dst_host_srv_count','dst_host_same_srv_rate',
+    'dst_host_diff_srv_rate','dst_host_serror_rate','dst_host_rerror_rate',
+    'dst_host_same_src_port_rate','dst_host_srv_diff_host_rate'
+  ];
+  const numericFields = new Set([
+    'duration','src_bytes','dst_bytes','wrong_fragment','logged_in',
+    'num_failed_logins','is_guest_login','root_shell','hot','num_compromised',
+    'num_root','num_file_creations','count','srv_count','same_srv_rate',
+    'diff_srv_rate','serror_rate','rerror_rate','dst_host_count',
+    'dst_host_srv_count','dst_host_same_srv_rate','dst_host_diff_srv_rate',
+    'dst_host_serror_rate','dst_host_rerror_rate','dst_host_same_src_port_rate',
+    'dst_host_srv_diff_host_rate'
+  ]);
+  const missingApiFields = {
+    urgent: 0, land: 0, su_attempted: 0, num_shells: 0,
+    num_access_files: 0, num_outbound_cmds: 0, is_host_login: 0,
+    srv_serror_rate: 0, srv_rerror_rate: 0,
+    dst_host_srv_serror_rate: 0, dst_host_srv_rerror_rate: 0
+  };
+  const data = { ...missingApiFields };
+  for (const f of fields) {
+    const el = document.getElementById(f);
+    if (!el) continue;
+    data[f] = numericFields.has(f) ? parseFloat(el.value) || 0 : el.value;
+  }
+  return data;
+}
+
+async function submitPrediction() {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Classifying…';
+  document.getElementById('result-content').innerHTML = '<div class="placeholder"><div>Running model…</div></div>';
+
+  try {
+    const body = getFormValues();
+    const res = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    renderResult(data);
+  } catch (e) {
+    document.getElementById('result-content').innerHTML =
+      `<div class="error-msg">Error: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Classify connection';
+  }
+}
+
+function renderResult(data) {
+  const pct = (v) => (v * 100).toFixed(1) + '%';
+  const classes = ['Normal','DoS','Probe','R2L','U2R'];
+  const colors = { Normal:'#1e7e34', DoS:'#c0392b', Probe:'#b7791f', R2L:'#ad1457', U2R:'#6a1b9a' };
+  const barColors = { Normal:'#1e7e34', DoS:'#e74c3c', Probe:'#f39c12', R2L:'#e91e63', U2R:'#9c27b0' };
+
+  const probBars = classes.map(cls => `
+    <div class="prob-row">
+      <span class="prob-label">${cls}</span>
+      <div class="prob-bar-bg"><div class="prob-bar-fill" style="width:${pct(data.probabilities[cls] || 0)};background:${barColors[cls]}"></div></div>
+      <span class="prob-val">${pct(data.probabilities[cls] || 0)}</span>
+    </div>`).join('');
+
+  const shapRows = data.top_contributing_features.map(f => `
+    <div class="shap-row">
+      <span class="shap-name" title="${f.feature}">${f.feature}</span>
+      <span class="shap-arrow ${f.direction === 'increased' ? 'up' : 'down'}">${f.direction === 'increased' ? '▲' : '▼'}</span>
+      <span class="shap-val">${f.shap_value.toFixed(3)}</span>
+    </div>`).join('');
+
+  document.getElementById('result-content').innerHTML = `
+    <span class="class-badge badge-${data.predicted_class}">${data.predicted_class}</span>
+    <div class="confidence-row">
+      <div class="confidence-bar-bg"><div class="confidence-bar-fill" style="width:${pct(data.confidence)};background:${colors[data.predicted_class]}"></div></div>
+      <span class="confidence-label">${pct(data.confidence)}</span>
+    </div>
+    <div class="prob-section">
+      <h3>Class probabilities</h3>
+      ${probBars}
+    </div>
+    <div class="shap-section">
+      <h3>Top contributing features</h3>
+      ${shapRows}
+    </div>`;
+}
+</script>
+</body>
+</html>

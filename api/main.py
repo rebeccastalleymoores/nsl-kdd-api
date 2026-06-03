@@ -18,6 +18,9 @@ from pydantic import BaseModel, Field
 
 from src.predict import IntrusionDetector
 
+from fastapi.responses import HTMLResponse
+from pathlib import Path
+
 
 # ----- Pydantic schemas -----
 # These define the shape of requests and responses. FastAPI uses them for
@@ -109,13 +112,10 @@ app = FastAPI(
 )
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def root():
-    return {
-        "service": "NSL-KDD Intrusion Detection API",
-        "version": "0.1.0",
-        "docs": "/docs",
-    }
+    html = Path("templates/index.html").read_text(encoding="utf-8")
+    return HTMLResponse(content=html)
 
 
 @app.get("/health")
