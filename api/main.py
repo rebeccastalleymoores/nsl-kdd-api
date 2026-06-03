@@ -114,7 +114,8 @@ app = FastAPI(
 
 @app.get("/", response_class=HTMLResponse)
 def root():
-    html = Path("templates/index.html").read_text(encoding="utf-8")
+    html_path = Path(__file__).parent.parent / "templates" / "index.html"
+    html = html_path.read_text(encoding="utf-8")
     return HTMLResponse(content=html)
 
 
